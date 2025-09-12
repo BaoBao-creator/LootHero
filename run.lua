@@ -1,14 +1,8 @@
 local player = game.Players.LocalPlayer
-local char = player.Character
-local humanoid = char.Humanoid
-local health = humanoid.Health
-local maxhealth = humanoid.MaxHealth
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
 local function heal()
-    health = maxhealth
+    humanoid.Health = humanoid.MaxHealth
 end
-humanoid.HealthChanged:Connect(function()
-    heal()
-end)
-humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-    maxhealth = humanoid.MaxHealth
-end)
+humanoid.HealthChanged:Connect(heal)
+humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)

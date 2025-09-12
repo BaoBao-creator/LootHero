@@ -1,6 +1,6 @@
 local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local humanoid = char:WaitForChild("Humanoid")
+local char = player.Character
+local humanoid = char.Humanoid
 local function heal()
 while true do
     task.wait(0.1)

@@ -1,11 +1,27 @@
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 local humanoid = char:WaitForChild("Humanoid")
+local healing = false
+local healthchangeconnect = nil
+local maxhealthchangeconnect = nil
 local function heal()
     humanoid.Health = humanoid.MaxHealth
 end
-humanoid.HealthChanged:Connect(heal)
-humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
+local function autoheal(v)
+    healing = v
+    if healing then
+        heal()
+        healthchangeconnect = humanoid.HealthChanged:Connect(heal)
+        maxhealthchangeconnect = humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
+    else
+        if healthchangeconnect and maxhealthchangeconnect then
+            healthchangeconnect:Disconnect()
+            maxhealthchangeconnect:Disconnect()
+            healthchangeconnect = nil
+            maxhealthchangeconnect = nil
+        end
+    end
+end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Simple Hub",
@@ -24,6 +40,6 @@ local AutoHealToggle = EventTab:CreateToggle({
     Name = "Auto Heal",
     Flag = "AutoHealToggle",
     Callback = function(v)
-        autoCollectFairy(v)
+        autoheal(v)
     end
 })

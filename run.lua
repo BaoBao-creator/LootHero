@@ -6,4 +6,4 @@ local function heal()
 end
 humanoid.HealthChanged:Connect(heal)
 humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
-local UI = loadstring(game:HttpGet('https://github.com/BaoBao-creator/Simple-Ui/blob/main/UI.lua'))()
+local UI = loadstring(game:HttpGet('https://raw.githubusercontent.com/BaoBao-creator/Simple-Ui/main/UI.lua'))()

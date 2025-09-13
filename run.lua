@@ -1,15 +1,14 @@
 local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local humanoid = char:WaitForChild("Humanoid")
-local healing = false
+local char = player.Character
+local humanoid = char.Humanoid
+local root = char.HumanoidRootPart
 local healthchangeconnect = nil
 local maxhealthchangeconnect = nil
 local function heal()
     humanoid.Health = humanoid.MaxHealth
 end
 local function autoheal(v)
-    healing = v
-    if healing then
+    if v then
         heal()
         healthchangeconnect = humanoid.HealthChanged:Connect(heal)
         maxhealthchangeconnect = humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
@@ -19,6 +18,27 @@ local function autoheal(v)
             maxhealthchangeconnect:Disconnect()
             healthchangeconnect = nil
             maxhealthchangeconnect = nil
+        end
+    end
+end
+local pickupsFolder = workspace.Pickups
+local autocoinconnect = nil
+local function tpcoin(obj)
+    obj.CFrame = root.CFrame
+end
+local function autocollect(v)
+    if v then
+        for _, coin in ipairs(pickupsFolder:GetChildren()) do
+            tpcoin(coin)
+        end
+        autocoinconnect = pickupsFolder.ChildAdded:Connect(function(child)
+            task.wait(0.01)
+            tpcoin(child)
+        end)
+    else
+        if autocoinconnect then
+            autocoinconnect:Disconnect()
+            autocoinconnect = nil
         end
     end
 end
@@ -42,5 +62,13 @@ local AutoHealToggle = MainTab:CreateToggle({
     Flag = "autohealToggle",
     Callback = function(v)
         autoheal(v)
+    end
+})
+local AutoCoinToggle = MainTab:CreateToggle({
+    Name = "Auto Collect",
+    CurrentValue = false,
+    Flag = "autocoinToggle",
+    Callback = function(v)
+        autocollect(v)
     end
 })

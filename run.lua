@@ -38,7 +38,8 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 0)
 local AutoHealToggle = MainTab:CreateToggle({
     Name = "Auto Heal",
-    Flag = "AutoHealToggle",
+    CurrentValue = false,
+    Flag = "autohealToggle",
     Callback = function(v)
         autoheal(v)
     end

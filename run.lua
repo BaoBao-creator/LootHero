@@ -6,13 +6,24 @@ local function heal()
 end
 humanoid.HealthChanged:Connect(heal)
 humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
-local UI = loadstring(game:HttpGet('https://raw.githubusercontent.com/BaoBao-creator/Simple-Ui/main/UI.lua'))()
-local Window = UI:CreateWindow({
-    Name = "Loot Hero Panel",
-    LoadingTitle = "Simple-Hub, Welcome",
-    LoadingSubtitle = "Made by BaoBao",
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "Simple Hub",
+    LoadingTitle = "Welcome!",
+    LoadingSubtitle = "by BaoBao",
+    ShowText = "UI",
+    Theme = "Bloom",
     ConfigurationSaving = {
         Enabled = true,
-        FileName = "MyConfig"
+        FolderName = nil,
+        FileName = "Simple Hub Config"
     }
+})
+local MainTab = Window:CreateTab("Main", 0)
+local AutoHealToggle = EventTab:CreateToggle({
+    Name = "Auto Heal",
+    Flag = "AutoHealToggle",
+    Callback = function(v)
+        autoCollectFairy(v)
+    end
 })

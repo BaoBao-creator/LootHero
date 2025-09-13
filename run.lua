@@ -42,6 +42,15 @@ local function autocollect(v)
         end
     end
 end
+local basespeed = humanoid.WalkSpeed
+local hackspeed = basespeed
+local function speed(v)
+    if v then
+        Humanoid.WalkSpeed = hackspeed
+    else
+        Humanoid.WalkSpeed = basespeed
+    end
+end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Simple Hub",
@@ -76,9 +85,18 @@ local Slider = Tab:CreateSlider({
     Name = "Walkspeed",
     Range = {0, 100},
     Increment = 10,
-    Suffix = "Bananas",
-    CurrentValue = 10,
-    Flag = "Slider1",
-    Callback = function(Value)
+    Suffix = "",
+    CurrentValue = basespeed,
+    Flag = "speedSlider",
+    Callback = function(v)
+        hackspeed = v
+    end
+})
+local speedToggle = MainTab:CreateToggle({
+    Name = "Apply Speed",
+    CurrentValue = false,
+    Flag = "speedoggle",
+    Callback = function(v)
+        speed(v)
     end
 })

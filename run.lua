@@ -72,3 +72,13 @@ local AutoCoinToggle = MainTab:CreateToggle({
         autocollect(v)
     end
 })
+local Slider = Tab:CreateSlider({
+    Name = "Walkspeed",
+    Range = {0, 100},
+    Increment = 10,
+    Suffix = "Bananas",
+    CurrentValue = 10,
+    Flag = "Slider1",
+    Callback = function(Value)
+    end
+})

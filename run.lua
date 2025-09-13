@@ -1,3 +1,4 @@
+local RunService = game:GetService("RunService")
 local player = game.Players.LocalPlayer
 local char = player.Character
 local humanoid = char.Humanoid
@@ -51,6 +52,63 @@ local function speed(v)
         Humanoid.WalkSpeed = basespeed
     end
 end
+local enemies = workspace.Shader.Enemies
+local lastCFrame = root.CFrame
+local DISTANCE = 10
+local childAddedConn
+local steppedConn
+local function lockMob(mob)
+	local hum = mob:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.WalkSpeed = 0
+		hum.AutoRotate = false
+		hum.PlatformStand = true
+	end
+	for _, part in ipairs(mob:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+		end
+	end
+end
+local function placeMob(mob, targetCFrame)
+	local hrp = mob:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local pos = targetCFrame.Position + targetCFrame.LookVector * DISTANCE
+	mob:PivotTo(CFrame.new(pos))
+end
+local function onNewEnemy(e)
+	if e:IsA("Model") and e:FindFirstChild("HumanoidRootPart") then
+		lockMob(e)
+		placeMob(e, root.CFrame)
+	end
+end
+local function bringmob(v)
+    if v then
+        for _, mob in ipairs(enemies:GetChildren()) do 
+            onNewEnemy(mob)
+        end
+        childAddedConn = enemies.ChildAdded:Connect(onNewEnemy)
+        steppedConn = RunService.Stepped:Connect(function()
+            if root.CFrame ~= lastCFrame then
+                lastCFrame = root.CFrame
+                for _, mob in ipairs(enemies:GetChildren()) do
+                    if mob:IsA("Model") then
+                        placeMob(mob, lastCFrame)
+                    end
+                end
+            end
+        end)
+    else
+        if childAddedConn then
+            childAddedConn:Disconnect()
+            childAddedConn = nil
+        end   
+        if steppedConn then 
+            steppedConn:Disconnect() 
+            steppedConn = nil
+        end
+    end
+end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Simple Hub",
@@ -81,13 +139,13 @@ local AutoCoinToggle = MainTab:CreateToggle({
         autocollect(v)
     end
 })
-local Slider = Tab:CreateSlider({
+local SpeedSlider = MainTab:CreateSlider({
     Name = "Walkspeed",
     Range = {0, 100},
     Increment = 10,
     Suffix = "",
     CurrentValue = basespeed,
-    Flag = "speedSlider",
+    Flag = "SpeedSlider",
     Callback = function(v)
         hackspeed = v
     end
@@ -95,8 +153,27 @@ local Slider = Tab:CreateSlider({
 local speedToggle = MainTab:CreateToggle({
     Name = "Apply Speed",
     CurrentValue = false,
-    Flag = "speedoggle",
+    Flag = "speedtoggle",
     Callback = function(v)
         speed(v)
+    end
+})
+local bringToggle = MainTab:CreateToggle({
+    Name = "Bring Mob",
+    CurrentValue = false,
+    Flag = "bringtoggle",
+    Callback = function(v)
+        bringmon(v)
+    end
+})
+local DisSlider = MainTab:CreateSlider({
+    Name = "Distance",
+    Range = {0, 100},
+    Increment = 10,
+    Suffix = "",
+    CurrentValue = 10,
+    Flag = "disSlider",
+    Callback = function(v)
+        DISTANCE = v
     end
 })

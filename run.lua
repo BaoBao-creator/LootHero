@@ -45,8 +45,9 @@ end
 --// Bring Mob
 local enemiesFolder = shader.Enemies
 local enemies
-local childAddedConn
+local childAddedConn, firstConn
 local firstmob
+local tppos
 local function lockMob(mob)
     local hum = mob.Humanoid
     hum.WalkSpeed = 0
@@ -58,26 +59,23 @@ local function lockMob(mob)
         end
     end
 end
-local function placeMob(mob, targetCFrame)
-    local hrp = mob.HumanoidRootPart
-    
-    mob:PivotTo(CFrame.new())
+local function placeMob(mob)
+    mob:PivotTo(CFrame.new(tppos))
 end
 local function onNewEnemy(e)
-    if e:IsA("Model") and e:FindFirstChild("HumanoidRootPart") then
-        lockMob(e)
-        placeMob(e, root.CFrame)
-    end
+    lockMob(e)
+    placeMob(e, root.CFrame)
 end
 local function bringmob(v)
     if v then
-        for _, mob in ipairs(enemies:GetChildren()) do 
+        enemies = enemiesFolder:GetChildren()
+        firstmob = enemies[1]
+        tppos = firstmob.WorldPivot.Position
+        for _, mob in ipairs(enemies) do 
             onNewEnemy(mob)
         end
         childAddedConn = enemies.ChildAdded:Connect(onNewEnemy)
-        steppedConn = RunService.Stepped:Connect(function()
-            if root.CFrame ~= lastCFrame then
-                lastCFrame = root.CFrame
+        firstConn = RunService.Stepped:Connect(function()
                 for _, mob in ipairs(enemies:GetChildren()) do
                     if mob:IsA("Model") then
                         placeMob(mob, lastCFrame)

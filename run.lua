@@ -5,30 +5,6 @@ local char = player.Character or player.CharacterAdded:Wait()
 local humanoid = char:WaitForChild("Humanoid")
 local root = char:WaitForChild("HumanoidRootPart")
 
---// Auto Heal
-local healthchangeconnect, maxhealthchangeconnect = nil, nil
-
-local function heal()
-    humanoid.Health = humanoid.MaxHealth
-end
-
-local function autoheal(v)
-    if v then
-        heal()
-        healthchangeconnect = humanoid.HealthChanged:Connect(heal)
-        maxhealthchangeconnect = humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(heal)
-    else
-        if healthchangeconnect then
-            healthchangeconnect:Disconnect()
-            healthchangeconnect = nil
-        end
-        if maxhealthchangeconnect then
-            maxhealthchangeconnect:Disconnect()
-            maxhealthchangeconnect = nil
-        end
-    end
-end
-
 --// Auto Collect
 local pickupsFolder = workspace:WaitForChild("Pickups")
 local autocoinconnect = nil
@@ -130,6 +106,151 @@ local function bringmob(v)
     end
 end
 
+--// Dodge bullets
+
+local MIN_DIST = 10
+local MIN_DIST_SQ = MIN_DIST * MIN_DIST
+local SEARCH_RADIUS = 30
+local STEP = 3
+local UPDATE_RATE = 0.08
+local CLEANUP_INTERVAL = 5
+
+local projectiles, projCount = {}, 0
+local function addProjectile(p)
+    if not p or not p:IsA("BasePart") or projectiles[p] then return end
+    projectiles[p] = true
+    projCount += 1
+end
+local function removeProjectile(p)
+    if projectiles[p] then projectiles[p] = nil projCount -= 1 end
+end
+
+workspace.Shader.Debris.ChildAdded:Connect(function(desc)
+    if desc:IsA("BasePart") and string.find(desc.Name,"Projectile") then
+        addProjectile(desc)
+        desc.AncestryChanged:Connect(function(_,parent) if not parent then removeProjectile(desc) end end)
+    end
+end)
+workspace.Shader.Debris.ChildRemoving:Connect(function(desc) if projectiles[desc] then removeProjectile(desc) end end)
+
+task.spawn(function()
+    while true do
+        task.wait(CLEANUP_INTERVAL)
+        for p in pairs(projectiles) do
+            if not p or not p.Parent or not p:IsA("BasePart") then removeProjectile(p) end
+        end
+    end
+end)
+
+local function collectProjectiles()
+    local out = {}
+    for p in pairs(projectiles) do
+        if p and p.Parent and p:IsA("BasePart") then table.insert(out,p) end
+    end
+    return out
+end
+
+local function distanceSq(a,b)
+    local dx,dy,dz=a.X-b.X,a.Y-b.Y,a.Z-b.Z
+    return dx*dx+dy*dy+dz*dz
+end
+
+-- Lưu 4 điểm góc bản đồ
+local mapCorners = {}
+
+function SaveCorner(index)
+    if hrp then
+        mapCorners[index] = hrp.Position
+    end
+end
+
+-- Lấy giới hạn min/max X,Z từ 4 điểm
+local function getMapBounds()
+    if #mapCorners < 4 then return nil end
+    local minX, maxX = math.huge, -math.huge
+    local minZ, maxZ = math.huge, -math.huge
+    for _,pos in pairs(mapCorners) do
+        minX = math.min(minX, pos.X)
+        maxX = math.max(maxX, pos.X)
+        minZ = math.min(minZ, pos.Z)
+        maxZ = math.max(maxZ, pos.Z)
+    end
+    return minX, maxX, minZ, maxZ
+end
+
+-- Kiểm tra xem pos có nằm trong map không
+local function inMapBounds(pos)
+    local minX, maxX, minZ, maxZ = getMapBounds()
+    if not minX then return true end -- chưa set thì cho qua
+    return pos.X >= minX and pos.X <= maxX and pos.Z >= minZ and pos.Z <= maxZ
+end
+
+local function isValidPosition(pos,bullets)
+    for _,b in ipairs(bullets) do
+        if b and b:IsA("BasePart") and b.Parent and distanceSq(b.Position,pos)<MIN_DIST_SQ then 
+            return false 
+        end
+    end
+    if not inMapBounds(pos) then return false end
+    return true
+end
+
+local function quickDodgeFromBullet(bullet)
+    local dir=hrp.Position-bullet.Position
+    dir=Vector3.new(dir.X,0,dir.Z)
+    if dir.Magnitude<0.001 then dir=Vector3.new(math.random()-0.5,0,math.random()-0.5) end
+    local unit=dir.Unit
+    local newPos=bullet.Position+unit*MIN_DIST
+    return Vector3.new(newPos.X,hrp.Position.Y,newPos.Z)
+end
+
+local function findSafePosition(bullets)
+    if not hrp or not hrp.Parent then return nil end
+    if isValidPosition(hrp.Position,bullets) then return hrp.Position end
+    local closestBullet,closestDistSq=nil,math.huge
+    for _,b in ipairs(bullets) do
+        if b and b:IsA("BasePart") and b.Parent then
+            local d2=distanceSq(b.Position,hrp.Position)
+            if d2<closestDistSq then closestDistSq,closestBullet=d2,b end
+        end
+    end
+    if closestBullet and closestDistSq<(MIN_DIST*1.5)*(MIN_DIST*1.5) then
+        local tryPos=quickDodgeFromBullet(closestBullet)
+        if isValidPosition(tryPos,bullets) then return tryPos end
+    end
+    local origin=hrp.Position
+    for r=STEP,SEARCH_RADIUS,STEP do
+        local tries=math.max(8,math.floor(2*math.pi*r/STEP))
+        for i=1,tries do
+            local angle=(i/tries)*math.pi*2
+            local checkPos=origin+Vector3.new(math.cos(angle)*r,0,math.sin(angle)*r)
+            if isValidPosition(checkPos,bullets) then return checkPos end
+        end
+    end
+    return nil
+end
+
+local function moveHRPTo(pos)
+    if not hrp or not hrp.Parent then return end
+    hrp.CFrame=CFrame.new(pos.X,hrp.Position.Y,pos.Z)
+end
+
+local accumulator=0
+RunService.Heartbeat:Connect(function(dt)
+    accumulator+=dt
+    if accumulator<UPDATE_RATE then return end
+    accumulator=0
+    if not hrp or not hrp.Parent or projCount==0 then return end
+    local bullets=collectProjectiles()
+    local limitSq=(SEARCH_RADIUS+MIN_DIST)^2
+    local anyNearby=false
+    for _,b in ipairs(bullets) do
+        if b and b:IsA("BasePart") and b.Parent and distanceSq(b.Position,hrp.Position)<=limitSq then anyNearby=true break end
+    end
+    if not anyNearby then return end
+    local safePos=findSafePosition(bullets)
+    if safePos then moveHRPTo(safePos) end
+end)
 --// UI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
@@ -146,13 +267,6 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTab = Window:CreateTab("Main", 0)
-
-MainTab:CreateToggle({
-    Name = "Auto Heal",
-    CurrentValue = false,
-    Flag = "autohealToggle",
-    Callback = autoheal
-})
 
 MainTab:CreateToggle({
     Name = "Auto Collect",

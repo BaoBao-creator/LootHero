@@ -13,9 +13,14 @@ local function tpcoin(obj)
 end
 local function autocollect(v)
     if v then
-        for _, coin in ipairs(pickupsFolder:GetChildren()) do
-            tpcoin(coin)
-        end
+        task.spawn(function()
+            while autocoinconnect do
+                for _, coin in ipairs(pickupsFolder:GetChildren()) do
+                    tpcoin(coin)
+                end
+            end
+            task.wait(60)
+        end)
         autocoinconnect = pickupsFolder.ChildAdded:Connect(function(child)
             task.wait(0.01)
             tpcoin(child)
@@ -38,8 +43,10 @@ local function speed(v)
     end
 end
 --// Bring Mob
-local enemies = shader.Enemies
+local enemiesFolder = shader.Enemies
+local enemies
 local childAddedConn
+local firstmob
 local function lockMob(mob)
     local hum = mob.Humanoid
     hum.WalkSpeed = 0
@@ -51,21 +58,17 @@ local function lockMob(mob)
         end
     end
 end
-
 local function placeMob(mob, targetCFrame)
-    local hrp = mob:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local pos = targetCFrame.Position + targetCFrame.LookVector * DISTANCE
-    mob:PivotTo(CFrame.new(pos))
+    local hrp = mob.HumanoidRootPart
+    
+    mob:PivotTo(CFrame.new())
 end
-
 local function onNewEnemy(e)
     if e:IsA("Model") and e:FindFirstChild("HumanoidRootPart") then
         lockMob(e)
         placeMob(e, root.CFrame)
     end
 end
-
 local function bringmob(v)
     if v then
         for _, mob in ipairs(enemies:GetChildren()) do 
